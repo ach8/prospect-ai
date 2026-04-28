@@ -1,0 +1,314 @@
+// Prisma Schema — ProspectAI
+// Multi-tenant SaaS de Prospection IA
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Multi-Tenancy
+// ============================================
+
+model Tenant {
+  id                String   @id @default(uuid())
+  name              String
+  slug              String   @unique
+  plan              Plan     @default(FREE)
+  aiCreditsRemaining Int     @default(100)
+  maxUsers          Int      @default(1)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  users             User[]
+  prospectLists     ProspectList[]
+  campaigns         Campaign[]
+  mailboxes         Mailbox[]
+  agentTasks        AgentTask[]
+
+  @@map("tenants")
+}
+
+enum Plan {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+model User {
+  id        String   @id @default(uuid())
+  tenantId  String
+  email     String   @unique
+  name      String
+  password  String?
+  role      UserRole @default(MEMBER)
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  campaigns Campaign[]
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+// ============================================
+// Prospects
+// ============================================
+
+model ProspectList {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  prospects ProspectListEntry[]
+
+  @@index([tenantId])
+  @@map("prospect_lists")
+}
+
+model Prospect {
+  id              String   @id @default(uuid())
+  tenantId        String
+  firstName       String
+  lastName        String
+  email           String?
+  emailVerified   Boolean  @default(false)
+  emailConfidence Int      @default(0)
+  phone           String?
+  linkedinUrl     String?
+  companyName     String
+  companyDomain   String?
+  jobTitle        String?
+  industry        String?
+  location        String?
+  enrichmentData  Json?
+  source          ProspectSource @default(MANUAL)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  lists            ProspectListEntry[]
+  campaignProspects CampaignProspect[]
+
+  @@index([tenantId])
+  @@index([email])
+  @@index([companyDomain])
+  @@map("prospects")
+}
+
+enum ProspectSource {
+  GOOGLE_SEARCH
+  GOOGLE_PLACES
+  SCRAPING
+  OPEN_DATA
+  LINKEDIN
+  MANUAL
+  API_IMPORT
+}
+
+model ProspectListEntry {
+  id           String @id @default(uuid())
+  prospectId   String
+  prospectListId String
+
+  prospect     Prospect     @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  prospectList ProspectList @relation(fields: [prospectListId], references: [id], onDelete: Cascade)
+
+  @@unique([prospectId, prospectListId])
+  @@map("prospect_list_entries")
+}
+
+// ============================================
+// Campaigns
+// ============================================
+
+model Campaign {
+  id        String         @id @default(uuid())
+  tenantId  String
+  userId    String
+  name      String
+  status    CampaignStatus @default(DRAFT)
+  goal      String
+  tone      String
+  aiConfig  Json           @default("{}")
+  startDate DateTime?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+  steps     SequenceStep[]
+  prospects CampaignProspect[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("campaigns")
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+model SequenceStep {
+  id           String  @id @default(uuid())
+  campaignId   String
+  stepOrder    Int
+  channel      Channel @default(EMAIL)
+  templateType TemplateType @default(AI_GENERATED)
+  aiPrompt     String?
+  manualContent String?
+  delayHours   Int     @default(0)
+
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("sequence_steps")
+}
+
+enum Channel {
+  EMAIL
+  LINKEDIN
+  SMS
+  CALL
+}
+
+enum TemplateType {
+  AI_GENERATED
+  MANUAL
+  HYBRID
+}
+
+model CampaignProspect {
+  id                 String               @id @default(uuid())
+  campaignId         String
+  prospectId         String
+  status             CampaignProspectStatus @default(PENDING)
+  personalizedSubject String?
+  personalizedBody   String?
+  currentStep        Int                  @default(0)
+  lastContactedAt    DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  campaign           Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  prospect           Prospect  @relation(fields: [prospectId], references: [id])
+  events             EmailEvent[]
+
+  @@unique([campaignId, prospectId])
+  @@index([status])
+  @@map("campaign_prospects")
+}
+
+enum CampaignProspectStatus {
+  PENDING
+  IN_PROGRESS
+  CONTACTED
+  REPLIED
+  CONVERTED
+  FAILED
+  OPTED_OUT
+}
+
+model EmailEvent {
+  id                  String    @id @default(uuid())
+  campaignProspectId  String
+  eventType           EmailEventType
+  metadata            Json?
+  occurredAt          DateTime  @default(now())
+
+  campaignProspect    CampaignProspect @relation(fields: [campaignProspectId], references: [id], onDelete: Cascade)
+
+  @@index([campaignProspectId])
+  @@index([eventType])
+  @@map("email_events")
+}
+
+enum EmailEventType {
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  REPLIED
+  BOUNCED
+  UNSUBSCRIBED
+  SPAM_REPORTED
+}
+
+// ============================================
+// Mailboxes
+// ============================================
+
+model Mailbox {
+  id              String  @id @default(uuid())
+  tenantId        String
+  emailAddress    String
+  smtpHost        String
+  smtpPort        Int     @default(587)
+  smtpUser        String
+  smtpPassEncrypted String
+  dailyLimit      Int     @default(50)
+  warmupLevel     Int     @default(0)
+  isActive        Boolean @default(true)
+  healthScore     Float   @default(100)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant          Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("mailboxes")
+}
+
+// ============================================
+// AI Agent Tasks (Job tracking)
+// ============================================
+
+model AgentTask {
+  id          String          @id @default(uuid())
+  tenantId    String
+  agentName   String
+  status      AgentTaskStatus @default(QUEUED)
+  input       Json
+  output      Json?
+  error       String?
+  tokensUsed  Int             @default(0)
+  durationMs  Int             @default(0)
+  createdAt   DateTime        @default(now())
+  completedAt DateTime?
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([agentName])
+  @@map("agent_tasks")
+}
+
+enum AgentTaskStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
