@@ -1,14 +1,4 @@
-const getApiUrl = () => {
-  if (process.env.NEXT_PUBLIC_API_URL && !process.env.NEXT_PUBLIC_API_URL.includes('localhost')) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-  if (typeof window !== 'undefined') {
-    return `http://${window.location.hostname}:4000/api/v1`;
-  }
-  return 'http://127.0.0.1:4000/api/v1';
-};
-
-const API_URL = getApiUrl();
+const API_URL = '/api/v1';
 
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   const url = `${API_URL}${endpoint}`;
