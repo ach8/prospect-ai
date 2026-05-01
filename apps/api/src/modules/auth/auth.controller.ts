@@ -68,7 +68,9 @@ export class AuthController {
     this.setCookies(res, result.accessToken, result.refreshToken);
     
     // Redirect to frontend dashboard
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const origin = req.headers.origin || req.headers.referer;
+    const fallbackHost = origin ? new URL(origin as string).origin : 'http://127.0.0.1:3000';
+    const frontendUrl = process.env.FRONTEND_URL || fallbackHost;
     res.redirect(`${frontendUrl}/`);
   }
 

@@ -6,8 +6,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UploadCloud, FileText, CheckCircle2, AlertCircle, Loader2, Mail, Phone, User, Link } from 'lucide-react';
 import axios from 'axios';
 
-// API base URL (should be from env in prod)
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const getApiUrl = () => {
+  if (process.env.NEXT_PUBLIC_API_URL && !process.env.NEXT_PUBLIC_API_URL.includes('localhost')) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== 'undefined') {
+    return `http://${window.location.hostname}:4000/api/v1`;
+  }
+  return 'http://127.0.0.1:4000/api/v1';
+};
+const API_URL = getApiUrl();
 
 type JobStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
