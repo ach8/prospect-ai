@@ -1,4 +1,4 @@
-import { IsString, IsArray, ArrayMinSize, IsIn, IsNotEmpty } from 'class-validator';
+import { IsString, IsArray, ArrayMinSize, IsIn, IsNotEmpty, IsOptional } from 'class-validator';
 
 export const AVAILABLE_TOOLS = ['GOOGLE_PLACES', 'WEB_SEARCH', 'ENRICHER', 'EMAIL_DISCOVERY'] as const;
 export type ToolType = typeof AVAILABLE_TOOLS[number];
