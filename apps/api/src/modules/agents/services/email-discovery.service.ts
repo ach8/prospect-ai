@@ -330,9 +330,8 @@ export class EmailDiscoveryService {
       // D'abord vérifier si c'est un catch-all
       const catchAllCheck = await this.reacherCheckEmail(`xrandomtest${Date.now()}@${domain}`);
       if (catchAllCheck?.isCatchAll) {
-        const bestEmail = personalEmails[0];
-        this.logger.log(`⚠️ [Reacher] Serveur catch-all détecté. Premier format: ${bestEmail}`);
-        return { email: bestEmail, isValid: true, isCatchAll: true, confidence: 50, source: 'catch_all' };
+        this.logger.log(`⚠️ [Reacher] Serveur catch-all détecté pour ${domain}. On ignore (règle stricte).`);
+        return null;
       }
 
       // Tester les permutations personnelles
@@ -352,9 +351,8 @@ export class EmailDiscoveryService {
 
       const catchAll = await this.isCatchAll(domain, primaryMx);
       if (catchAll) {
-        const bestEmail = personalEmails[0];
-        this.logger.log(`⚠️ Serveur catch-all. Premier format: ${bestEmail}`);
-        return { email: bestEmail, isValid: true, isCatchAll: true, confidence: 50, source: 'catch_all' };
+        this.logger.log(`⚠️ [SMTP] Serveur catch-all détecté pour ${domain}. On ignore (règle stricte).`);
+        return null;
       }
 
       const personalResult = await this.smtpFindEmail(personalEmails, primaryMx, 'smtp_verified');
