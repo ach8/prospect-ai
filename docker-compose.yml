@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # 1. Le Frontend (Next.js)
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000 # A changer par ton domaine en prod
+
+  # 2. Le Backend (NestJS + IA)
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+    env_file:
+      - ./apps/api/.env
+    environment:
+      - REACHER_API_URL=http://reacher:8080 # Le backend appelle le conteneur reacher en interne
+    depends_on:
+      - reacher
+
+  # 3. La solution de vérification d'email (Reacher)
+  reacher:
+    image: reacherhq/backend:latest
+    ports:
+      - "8080:8080" # Tu pourras tester via http://ton-ip:8080/v0/check_email
+    restart: unless-stopped
+    # Pas besoin de variables d'environnement, ça marche out of the box

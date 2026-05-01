@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================
@@ -29,6 +30,7 @@ model Tenant {
   campaigns         Campaign[]
   mailboxes         Mailbox[]
   agentTasks        AgentTask[]
+  csvImportJobs     CsvImportJob[]
 
   @@map("tenants")
 }
@@ -311,4 +313,34 @@ enum AgentTaskStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+// ============================================
+// CSV Data Enrichment
+// ============================================
+
+model CsvImportJob {
+  id          String         @id @default(uuid())
+  tenantId    String
+  filename    String
+  status      ImportJobStatus @default(PENDING)
+  totalRows   Int            @default(0)
+  processedRows Int          @default(0)
+  enrichedRows  Int          @default(0)
+  failedRows    Int          @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("csv_import_jobs")
+}
+
+enum ImportJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
