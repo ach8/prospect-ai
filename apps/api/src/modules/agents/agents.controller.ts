@@ -4,6 +4,7 @@ import { GooglePlacesService } from './services/google-places.service';
 import { WebSearchAgentService } from './services/web-search-agent.service';
 import { EnricherAgentService } from './services/enricher-agent.service';
 import { DataEnrichmentAgentService, EnrichmentOptions } from './services/data-enrichment-agent.service';
+import { EmailDiscoveryService } from './services/email-discovery.service';
 import { ProspectsService } from '../prospects/prospects.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
@@ -30,6 +31,7 @@ export class AgentsController {
     private readonly webSearchService: WebSearchAgentService,
     private readonly enricherService: EnricherAgentService,
     private readonly dataEnrichmentService: DataEnrichmentAgentService,
+    private readonly emailDiscoveryService: EmailDiscoveryService,
     private readonly prospectsService: ProspectsService
   ) {}
 
@@ -105,6 +107,16 @@ export class AgentsController {
             break;
           case 'ENRICHER':
             results.enricher = await this.enricherService.enrichCompany(query);
+            break;
+          case 'EMAIL_DISCOVERY':
+            if (!dto.firstName || !dto.lastName || !dto.domain) {
+              throw new Error('firstName, lastName et domain sont requis pour la découverte d\'email');
+            }
+            results.emailDiscovery = await this.emailDiscoveryService.findValidEmail(
+              dto.firstName,
+              dto.lastName,
+              dto.domain
+            );
             break;
           default:
             break;

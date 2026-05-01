@@ -11,6 +11,7 @@ import {
   LifeBuoy,
   Send,
   Database,
+  Wrench,
 } from "lucide-react"
 
 import {
@@ -29,6 +30,7 @@ const navMain = [
   { title: "Campagnes", url: "/campaigns", icon: Megaphone },
   { title: "Enrichissement", url: "/enrichment", icon: Database },
   { title: "Agents IA", url: "/agents", icon: Bot },
+  { title: "Outils", url: "/tools", icon: Wrench },
   { title: "Analytics", url: "/analytics", icon: BarChart },
 ]
 
