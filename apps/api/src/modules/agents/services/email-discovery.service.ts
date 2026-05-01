@@ -322,11 +322,10 @@ export class EmailDiscoveryService {
     }
 
     const personalEmails = this.generatePermutations(firstName, lastName, domain);
-    const genericEmails = this.generateGenericEmails(domain);
 
     // ===== MÉTHODE 1 : REACHER (prioritaire) =====
     if (hasReacher) {
-      this.logger.log(`🔍 [Reacher] Test de ${personalEmails.length} permutations + ${genericEmails.length} génériques...`);
+      this.logger.log(`🔍 [Reacher] Test de ${personalEmails.length} permutations personnelles...`);
 
       // D'abord vérifier si c'est un catch-all
       const catchAllCheck = await this.reacherCheckEmail(`xrandomtest${Date.now()}@${domain}`);
@@ -342,16 +341,7 @@ export class EmailDiscoveryService {
         if (result && result.isValid && !result.isCatchAll) return result;
       }
 
-      // Tester les emails génériques
-      for (const email of genericEmails) {
-        const result = await this.reacherVerify(email);
-        if (result && result.isValid) {
-          result.source = 'generic_verified';
-          return result;
-        }
-      }
-
-      this.logger.warn(`❌ [Reacher] Aucun email valide trouvé pour ${firstName} ${lastName} @ ${domain}`);
+      this.logger.warn(`❌ [Reacher] Aucun email personnel valide trouvé pour ${firstName} ${lastName} @ ${domain}`);
       return null;
     }
 
@@ -370,10 +360,7 @@ export class EmailDiscoveryService {
       const personalResult = await this.smtpFindEmail(personalEmails, primaryMx, 'smtp_verified');
       if (personalResult) return personalResult;
 
-      const genericResult = await this.smtpFindEmail(genericEmails, primaryMx, 'generic_verified');
-      if (genericResult) return genericResult;
-
-      this.logger.warn(`❌ [SMTP] Aucun email accepté sur ${domain}`);
+      this.logger.warn(`❌ [SMTP] Aucun email personnel accepté sur ${domain}`);
       return null;
     }
 
