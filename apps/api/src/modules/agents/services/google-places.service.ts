@@ -8,6 +8,7 @@ export interface LocalBusiness {
   phone?: string;
   rating?: number;
   placeId: string;
+  googleMapsUrl?: string;
 }
 
 @Injectable()
@@ -25,8 +26,9 @@ export class GooglePlacesService {
     this.logger.log(`Recherche Google Places pour : "${query}"`);
 
     try {
-      // 1. Recherche texte (Text Search)
-      const textSearchResponse = await this.client.textSearch({
+      // 1. Recherche texte (Text Search) avec pagination
+      let allPlaces: any[] = [];
+      let textSearchResponse = await this.client.textSearch({
         params: {
           query,
           key: this.apiKey,
@@ -34,7 +36,36 @@ export class GooglePlacesService {
         },
       });
 
-      const places = textSearchResponse.data.results.slice(0, limit);
+      if (textSearchResponse.data.results) {
+        allPlaces.push(...textSearchResponse.data.results);
+      }
+
+      let pageTokensUsed = 0;
+      while (textSearchResponse.data.next_page_token && allPlaces.length < limit && pageTokensUsed < 3) {
+        // L'API Google exige un court délai avant que le next_page_token soit valide
+        await new Promise(r => setTimeout(r, 2000));
+        
+        try {
+          textSearchResponse = await this.client.textSearch({
+            params: {
+              query,
+              pagetoken: textSearchResponse.data.next_page_token,
+              key: this.apiKey,
+              language: Language.fr,
+            },
+          });
+          
+          if (textSearchResponse.data.results) {
+            allPlaces.push(...textSearchResponse.data.results);
+          }
+          pageTokensUsed++;
+        } catch (e) {
+          this.logger.warn('Erreur lors de la pagination Google Places: ' + e);
+          break;
+        }
+      }
+
+      const places = allPlaces.slice(0, limit);
       const businesses: LocalBusiness[] = [];
 
       // 2. Pour chaque lieu, on fait un Place Details pour avoir le site web et le téléphone
@@ -59,6 +90,7 @@ export class GooglePlacesService {
             phone: details.formatted_phone_number,
             rating: details.rating,
             placeId: place.place_id,
+            googleMapsUrl: `https://www.google.com/maps/place/?q=place_id:${place.place_id}`,
           });
         } catch (detailError) {
           this.logger.warn(`Erreur lors de la récupération des détails pour ${place.name}: ${detailError}`);

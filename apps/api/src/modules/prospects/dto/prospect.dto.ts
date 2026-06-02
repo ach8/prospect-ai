@@ -31,6 +31,10 @@ export class CreateProspectDto {
   @IsOptional()
   jobTitle?: string;
 
+  @IsString()
+  @IsOptional()
+  industry?: string;
+
   @IsEnum(ProspectSource)
   @IsOptional()
   source?: ProspectSource;
@@ -75,4 +79,8 @@ export class UpdateProspectDto {
   @IsString()
   @IsOptional()
   jobTitle?: string;
+
+  @IsString()
+  @IsOptional()
+  industry?: string;
 }

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -15,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus } from "lucide-react"
+import { INDUSTRIES } from "@/lib/constants/industries"
 import {
   Select,
   SelectContent,
@@ -22,28 +24,55 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { api } from "@/lib/api"
 
 export function CreateCampaignDialog({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [tone, setTone] = useState("Professionnel et direct")
+  const [loadingText, setLoadingText] = useState("Création...")
+  const [lists, setLists] = useState<any[]>([])
+  const [selectedListId, setSelectedListId] = useState<string>("")
+  const router = useRouter()
+
+  useEffect(() => {
+    if (open) {
+      api.get('/lists').then(data => {
+        setLists(Array.isArray(data) ? data : [])
+      }).catch(console.error)
+    }
+  }, [open])
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
+    setLoadingText("Création...")
     const formData = new FormData(e.currentTarget)
     const name = formData.get("name") as string
-    const goal = formData.get("goal") as string
+    const targetIndustry = formData.get("targetIndustry") as string
     
     try {
-      const { api } = await import('@/lib/api')
-      await api.post('/campaigns', { name, goal, tone })
+      const payload: any = { name }
+      if (selectedListId && selectedListId !== "none") {
+        payload.listId = selectedListId
+      }
+      if (targetIndustry && targetIndustry !== "none") {
+        payload.aiConfig = { targetIndustry }
+      }
+      const newCampaign = await api.post('/campaigns', payload)
+      
+      if (payload.aiConfig?.targetIndustry) {
+        setLoadingText("Nettoyage IA démarré...")
+        await api.post(`/campaigns/${newCampaign.id}/start-cleaning`, {})
+      }
+
       setOpen(false)
       onCreated()
+      router.push(`/campaigns/${newCampaign.id}/verify`)
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
+      setLoadingText("Création...")
     }
   }
 
@@ -58,7 +87,7 @@ export function CreateCampaignDialog({ onCreated }: { onCreated: () => void }) {
         <DialogHeader>
           <DialogTitle>Créer une campagne</DialogTitle>
           <DialogDescription>
-            Configurez l'objectif de votre campagne. L'IA s'en servira pour rédiger vos emails.
+            Donnez un nom à votre campagne et choisissez une liste de prospects à importer.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit}>
@@ -68,34 +97,40 @@ export function CreateCampaignDialog({ onCreated }: { onCreated: () => void }) {
               <Input id="name" name="name" placeholder="Ex: Prospection Agences Web Q3" required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="goal">Objectif principal</Label>
-              <Textarea 
-                id="goal" 
-                name="goal" 
-                placeholder="Ex: Proposer notre outil de SEO et obtenir un appel de 15 minutes." 
-                required 
-                className="resize-none"
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tone">Ton de communication</Label>
-              <Select value={tone} onValueChange={setTone}>
+              <Label htmlFor="list">Liste de prospects (Optionnel)</Label>
+              <Select value={selectedListId} onValueChange={setSelectedListId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un ton" />
+                  <SelectValue placeholder="Sélectionner une liste" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Professionnel et direct">Professionnel et direct</SelectItem>
-                  <SelectItem value="Amical et décontracté">Amical et décontracté</SelectItem>
-                  <SelectItem value="Humoristique">Humoristique</SelectItem>
-                  <SelectItem value="Provocateur (Challenger Sale)">Provocateur (Challenger Sale)</SelectItem>
+                  <SelectItem value="none">Aucune liste pour le moment</SelectItem>
+                  {lists.map(list => (
+                    <SelectItem key={list.id} value={list.id}>{list.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="targetIndustry">Secteur d'activité ciblé (Optionnel)</Label>
+              <Select name="targetIndustry" defaultValue="none">
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un secteur cible" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Tous secteurs confondus</SelectItem>
+                  {INDUSTRIES.map(ind => (
+                    <SelectItem key={ind} value={ind}>{ind}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Si un secteur est défini, l'Agent Nettoyeur activera une "Voie Rapide" et filtrera les prospects hors-cible.
+              </p>
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-            <Button type="submit" disabled={loading}>{loading ? "Création..." : "Créer"}</Button>
+            <Button type="submit" disabled={loading}>{loading ? loadingText : "Suivant"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

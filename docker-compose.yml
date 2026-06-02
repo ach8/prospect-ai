@@ -25,14 +25,20 @@ services:
     env_file:
       - ./apps/api/.env
     environment:
-      - REACHER_API_URL=http://reacher:8080 # Le backend appelle le conteneur reacher en interne
+      - REDIS_URL=redis://redis:6379
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/apps/api/google-credentials.json
     depends_on:
-      - reacher
+      - redis
 
-  # 3. La solution de vérification d'email (Reacher)
-  reacher:
-    image: reacherhq/backend:latest
+  # 3. Base de données Redis Locale (remplace Upstash qui est limité)
+  redis:
+    image: redis:alpine
     ports:
-      - "8080:8080" # Tu pourras tester via http://ton-ip:8080/v0/check_email
+      - "6379:6379"
     restart: unless-stopped
-    # Pas besoin de variables d'environnement, ça marche out of the box
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  redis-data:

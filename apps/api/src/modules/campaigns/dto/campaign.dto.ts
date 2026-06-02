@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsObject } from 'class-validator';
 import { CampaignStatus } from '@prisma/client';
 
 export class CreateCampaignDto {
@@ -7,12 +7,16 @@ export class CreateCampaignDto {
   name: string;
 
   @IsString()
-  @IsNotEmpty()
-  goal: string;
+  @IsOptional()
+  listId?: string;
 
   @IsString()
-  @IsNotEmpty()
-  tone: string;
+  @IsOptional()
+  goal?: string;
+
+  @IsObject()
+  @IsOptional()
+  aiConfig?: any;
 }
 
 export class UpdateCampaignDto {
@@ -20,15 +24,11 @@ export class UpdateCampaignDto {
   @IsOptional()
   name?: string;
 
-  @IsString()
-  @IsOptional()
-  goal?: string;
-
-  @IsString()
-  @IsOptional()
-  tone?: string;
-
   @IsEnum(CampaignStatus)
   @IsOptional()
   status?: CampaignStatus;
+
+  @IsObject()
+  @IsOptional()
+  aiConfig?: any;
 }

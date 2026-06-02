@@ -27,9 +27,9 @@ async function bootstrap() {
   const emailDto: ManualResearchDto = {
     query: 'Recherche email', // non utilisé par cet outil mais requis par le DTO global
     tools: ['EMAIL_DISCOVERY'],
-    firstName: 'Selim',
-    lastName: 'Jaouadi',
-    domain: 'bigsmash.fr'
+    firstName: 'Ingrid',
+    lastName: 'Dhalluin',
+    domain: 'cosygallery.fr'
   };
   const emailResult = await controller.runManualResearch(emailDto);
   console.log(JSON.stringify(emailResult, null, 2));

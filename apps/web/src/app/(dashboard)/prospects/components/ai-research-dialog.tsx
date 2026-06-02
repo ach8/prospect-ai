@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Sparkles, Loader2 } from "lucide-react"
 
 export function AiResearchDialog({ onComplete }: { onComplete: () => void }) {
@@ -30,11 +31,12 @@ export function AiResearchDialog({ onComplete }: { onComplete: () => void }) {
     const formData = new FormData(e.currentTarget)
     const prompt = formData.get("prompt") as string
     const listName = formData.get("listName") as string
+    const weblessOnly = formData.get("weblessOnly") === "on"
     
     try {
       const { api } = await import('@/lib/api')
       // Lancement de l'agent avec le nom du dossier optionnel
-      const result = await api.post('/agents/research', { prompt, listName })
+      const result = await api.post('/agents/research', { prompt, listName, weblessOnly })
       
       setResults({
         summary: result.summary || "",
@@ -78,7 +80,8 @@ export function AiResearchDialog({ onComplete }: { onComplete: () => void }) {
 
              ...(p.enrichmentData || {}),
              companyAddress: p.companyAddress,
-             companyDescription: p.companyDescription 
+             companyDescription: p.companyDescription,
+             googleMapsUrl: p.googleMapsUrl
           }
         };
         // Nettoyage des propriétés non autorisées par le backend
@@ -149,6 +152,15 @@ export function AiResearchDialog({ onComplete }: { onComplete: () => void }) {
                   disabled={loading}
                 />
               </div>
+              <div className="flex items-center space-x-2 pt-2">
+                <Checkbox id="weblessOnly" name="weblessOnly" disabled={loading} />
+                <label
+                  htmlFor="weblessOnly"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Uniquement des entreprises SANS site web (Création de sites)
+                </label>
+              </div>
             </div>
             {loading && (
               <div className="flex flex-col items-center justify-center p-4 gap-2 text-sm text-muted-foreground">
@@ -204,17 +216,22 @@ export function AiResearchDialog({ onComplete }: { onComplete: () => void }) {
                            <Badge variant="outline" className="text-muted-foreground text-[10px]">Sans Email</Badge>
                          )}
                        </div>
-                       <div className="flex items-center gap-2 mt-1">
-                         <div className="text-xs text-muted-foreground">{p.jobTitle} @ {p.companyName}</div>
-                         {p.source && (
-                           <Badge variant="outline" className="text-[9px] uppercase">{p.source.replace('_', ' ')}</Badge>
-                         )}
-                         {p.enrichmentData?.leadScore && (
-                           <Badge variant="outline" className="text-[9px] text-blue-500 bg-blue-500/10 border-blue-500/20">
-                             Score: {p.enrichmentData.leadScore}/100
-                           </Badge>
-                         )}
-                       </div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <div className="text-xs text-muted-foreground">{p.jobTitle} @ {p.companyName}</div>
+                          {p.source && (
+                            <Badge variant="outline" className="text-[9px] uppercase">{p.source.replace('_', ' ')}</Badge>
+                          )}
+                          {p.enrichmentData?.leadScore && (
+                            <Badge variant="outline" className="text-[9px] text-blue-500 bg-blue-500/10 border-blue-500/20">
+                              Score: {p.enrichmentData.leadScore}/100
+                            </Badge>
+                          )}
+                          {p.googleMapsUrl && (
+                            <a href={p.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline flex items-center gap-1">
+                              📍 Google Maps
+                            </a>
+                          )}
+                        </div>
                        {p.email && <div className="text-xs">{p.email}</div>}
                        {p.enrichmentData?.companyDescription && (
                          <div className="text-[10px] text-muted-foreground mt-1 italic border-l-2 pl-2">

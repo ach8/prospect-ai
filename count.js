@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); prisma.prospect.count({ where: { createdAt: { gte: new Date(Date.now() - 30 * 60 * 1000) } } }).then(c => console.log('NEW PROSPECTS:', c));

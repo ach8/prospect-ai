@@ -24,4 +24,8 @@ export class ManualResearchDto {
   @IsString()
   @IsOptional()
   domain?: string;
+
+  @IsString()
+  @IsOptional()
+  companyName?: string;
 }

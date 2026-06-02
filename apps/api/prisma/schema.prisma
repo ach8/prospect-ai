@@ -16,21 +16,25 @@ datasource db {
 // ============================================
 
 model Tenant {
-  id                String   @id @default(uuid())
-  name              String
-  slug              String   @unique
-  plan              Plan     @default(FREE)
-  aiCreditsRemaining Int     @default(100)
-  maxUsers          Int      @default(1)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  name               String
+  slug               String   @unique
+  plan               Plan     @default(FREE)
+  aiCreditsRemaining Int      @default(100)
+  maxUsers           Int      @default(1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  users             User[]
-  prospectLists     ProspectList[]
-  campaigns         Campaign[]
-  mailboxes         Mailbox[]
-  agentTasks        AgentTask[]
-  csvImportJobs     CsvImportJob[]
+  users         User[]
+  prospectLists ProspectList[]
+  campaigns     Campaign[]
+  mailboxes     Mailbox[]
+  agentTasks    AgentTask[]
+  csvImportJobs CsvImportJob[]
+  researchJobs  ResearchJob[]
+  folders            Folder[]
+  knowledgeDocuments KnowledgeDocument[]
+  promptTemplates    PromptTemplate[]
 
   @@map("tenants")
 }
@@ -53,7 +57,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   campaigns Campaign[]
 
   @@index([tenantId])
@@ -68,31 +72,51 @@ enum UserRole {
 }
 
 // ============================================
-// Prospects
+// Prospects & Folders
 // ============================================
+
+model Folder {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  prospectLists ProspectList[]
+  campaigns     Campaign[]
+
+  @@index([tenantId])
+  @@map("folders")
+}
 
 model ProspectList {
   id        String   @id @default(uuid())
   tenantId  String
+  folderId  String?
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  folder    Folder?             @relation(fields: [folderId], references: [id], onDelete: SetNull)
   prospects ProspectListEntry[]
+  csvImportJobs CsvImportJob[]
+  researchJobs  ResearchJob[]
 
   @@index([tenantId])
   @@map("prospect_lists")
 }
 
 model Prospect {
-  id              String   @id @default(uuid())
+  id              String         @id @default(uuid())
   tenantId        String
   firstName       String
   lastName        String
   email           String?
-  emailVerified   Boolean  @default(false)
-  emailConfidence Int      @default(0)
+  emailVerified   Boolean        @default(false)
+  emailConfidence Int            @default(0)
   phone           String?
   linkedinUrl     String?
   companyName     String
@@ -102,11 +126,18 @@ model Prospect {
   location        String?
   enrichmentData  Json?
   source          ProspectSource @default(MANUAL)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  csvImportJobId  String?
+  researchJobId   String?
+  callStatus      CallStatus     @default(UNCALLED)
+  callNotes       String?        @db.Text
+  lastCalledAt    DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
-  lists            ProspectListEntry[]
+  lists             ProspectListEntry[]
   campaignProspects CampaignProspect[]
+  csvImportJob      CsvImportJob?       @relation(fields: [csvImportJobId], references: [id], onDelete: SetNull)
+  researchJob       ResearchJob?        @relation(fields: [researchJobId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([email])
@@ -124,9 +155,19 @@ enum ProspectSource {
   API_IMPORT
 }
 
+enum CallStatus {
+  UNCALLED
+  SKIPPED
+  VOICEMAIL
+  CALL_BACK
+  NOT_INTERESTED
+  INTERESTED
+  WRONG_NUMBER
+}
+
 model ProspectListEntry {
-  id           String @id @default(uuid())
-  prospectId   String
+  id             String @id @default(uuid())
+  prospectId     String
   prospectListId String
 
   prospect     Prospect     @relation(fields: [prospectId], references: [id], onDelete: Cascade)
@@ -144,19 +185,20 @@ model Campaign {
   id        String         @id @default(uuid())
   tenantId  String
   userId    String
+  folderId  String?
   name      String
   status    CampaignStatus @default(DRAFT)
-  goal      String
-  tone      String
   aiConfig  Json           @default("{}")
   startDate DateTime?
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id])
-  steps     SequenceStep[]
-  prospects CampaignProspect[]
+  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id])
+  folder    Folder?            @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  steps              SequenceStep[]
+  prospects          CampaignProspect[]
+  knowledgeDocuments KnowledgeDocument[]
 
   @@index([tenantId])
   @@index([status])
@@ -173,16 +215,19 @@ enum CampaignStatus {
 }
 
 model SequenceStep {
-  id           String  @id @default(uuid())
-  campaignId   String
-  stepOrder    Int
-  channel      Channel @default(EMAIL)
-  templateType TemplateType @default(AI_GENERATED)
-  aiPrompt     String?
-  manualContent String?
-  delayHours   Int     @default(0)
+  id            String       @id @default(uuid())
+  campaignId    String
+  stepOrder     Int
+  channel       Channel      @default(EMAIL)
+  templateType  TemplateType @default(AI_GENERATED)
+  agentType     AgentType    @default(FIRST_TOUCH)
+  aiPrompt      String?      @db.Text
+  subject       String?
+  manualContent String?      @db.Text
+  delayHours    Int          @default(0)
 
-  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign          Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  generatedMessages GeneratedMessage[]
 
   @@index([campaignId])
   @@map("sequence_steps")
@@ -202,20 +247,21 @@ enum TemplateType {
 }
 
 model CampaignProspect {
-  id                 String               @id @default(uuid())
-  campaignId         String
-  prospectId         String
-  status             CampaignProspectStatus @default(PENDING)
+  id                  String                 @id @default(uuid())
+  campaignId          String
+  prospectId          String
+  status              CampaignProspectStatus @default(PENDING)
   personalizedSubject String?
-  personalizedBody   String?
-  currentStep        Int                  @default(0)
-  lastContactedAt    DateTime?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  personalizedBody    String?
+  currentStep         Int                    @default(0)
+  lastContactedAt     DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
 
-  campaign           Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  prospect           Prospect  @relation(fields: [prospectId], references: [id])
-  events             EmailEvent[]
+  campaign Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  prospect Prospect           @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  events   EmailEvent[]
+  messages GeneratedMessage[]
 
   @@unique([campaignId, prospectId])
   @@index([status])
@@ -233,13 +279,13 @@ enum CampaignProspectStatus {
 }
 
 model EmailEvent {
-  id                  String    @id @default(uuid())
-  campaignProspectId  String
-  eventType           EmailEventType
-  metadata            Json?
-  occurredAt          DateTime  @default(now())
+  id                 String         @id @default(uuid())
+  campaignProspectId String
+  eventType          EmailEventType
+  metadata           Json?
+  occurredAt         DateTime       @default(now())
 
-  campaignProspect    CampaignProspect @relation(fields: [campaignProspectId], references: [id], onDelete: Cascade)
+  campaignProspect CampaignProspect @relation(fields: [campaignProspectId], references: [id], onDelete: Cascade)
 
   @@index([campaignProspectId])
   @@index([eventType])
@@ -262,21 +308,21 @@ enum EmailEventType {
 // ============================================
 
 model Mailbox {
-  id              String  @id @default(uuid())
-  tenantId        String
-  emailAddress    String
-  smtpHost        String
-  smtpPort        Int     @default(587)
-  smtpUser        String
+  id                String   @id @default(uuid())
+  tenantId          String
+  emailAddress      String
+  smtpHost          String
+  smtpPort          Int      @default(587)
+  smtpUser          String
   smtpPassEncrypted String
-  dailyLimit      Int     @default(50)
-  warmupLevel     Int     @default(0)
-  isActive        Boolean @default(true)
-  healthScore     Float   @default(100)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  dailyLimit        Int      @default(50)
+  warmupLevel       Int      @default(0)
+  isActive          Boolean  @default(true)
+  healthScore       Float    @default(100)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  tenant          Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@map("mailboxes")
@@ -299,7 +345,7 @@ model AgentTask {
   createdAt   DateTime        @default(now())
   completedAt DateTime?
 
-  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([status])
@@ -316,22 +362,70 @@ enum AgentTaskStatus {
 }
 
 // ============================================
+// Asynchronous Research Jobs
+// ============================================
+
+model ResearchJob {
+  id                 String             @id @default(uuid())
+  tenantId           String
+  prompt             String             @db.Text
+  targetCount        Int                @default(100)
+  foundCount         Int                @default(0)
+  processedCount     Int                @default(0)
+  status             ResearchJobStatus  @default(PENDING)
+  blacklistedDomains Json               @default("[]")
+  options            Json               @default("{}")
+  listId             String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  list      ProspectList? @relation(fields: [listId], references: [id], onDelete: SetNull)
+  prospects Prospect[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("research_jobs")
+}
+
+enum ResearchJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ============================================
 // CSV Data Enrichment
 // ============================================
 
-model CsvImportJob {
-  id          String         @id @default(uuid())
-  tenantId    String
-  filename    String
-  status      ImportJobStatus @default(PENDING)
-  totalRows   Int            @default(0)
-  processedRows Int          @default(0)
-  enrichedRows  Int          @default(0)
-  failedRows    Int          @default(0)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+enum JobType {
+  ENRICHMENT
+  CLEANER
+  IMPORT
+}
 
-  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+model CsvImportJob {
+  id            String          @id @default(uuid())
+  tenantId      String
+  filename      String
+  jobType       JobType         @default(ENRICHMENT)
+  status        ImportJobStatus @default(PENDING)
+  totalRows     Int             @default(0)
+  processedRows       Int             @default(0)
+  enrichedRows        Int             @default(0)
+  failedRows          Int             @default(0)
+  emailsFoundSearch   Int             @default(0)
+  emailsFoundAnymail  Int             @default(0)
+  emailsFoundDatabase Int             @default(0)
+  emailsNotFound      Int             @default(0)
+  listId              String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  list      ProspectList?  @relation(fields: [listId], references: [id], onDelete: SetNull)
+  prospects Prospect[]
 
   @@index([tenantId])
   @@index([status])
@@ -344,3 +438,84 @@ enum ImportJobStatus {
   COMPLETED
   FAILED
 }
+
+// ============================================
+// Multi-Agent Copywriting & RAG
+// ============================================
+
+enum AgentType {
+  SUBJECT
+  FIRST_TOUCH
+  FOLLOW_UP
+  CLOSER
+  VISUAL_AUDIT
+}
+
+model GeneratedMessage {
+  id                 String                 @id @default(uuid())
+  campaignProspectId String
+  sequenceStepId     String
+  subject            String?
+  body               String
+  status             GeneratedMessageStatus @default(DRAFT)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  campaignProspect CampaignProspect @relation(fields: [campaignProspectId], references: [id], onDelete: Cascade)
+  sequenceStep     SequenceStep     @relation(fields: [sequenceStepId], references: [id], onDelete: Cascade)
+
+  @@index([campaignProspectId])
+  @@index([sequenceStepId])
+  @@index([status])
+  @@map("generated_messages")
+}
+
+enum GeneratedMessageStatus {
+  DRAFT
+  APPROVED
+  SENT
+  FAILED
+}
+
+model KnowledgeDocument {
+  id         String   @id @default(uuid())
+  tenantId   String
+  campaignId String?
+  name       String
+  content    String   // Extracted text content or system prompt
+  fileUrl    String?  // Original file if uploaded
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([campaignId])
+  @@map("knowledge_documents")
+}
+
+model PromptTemplate {
+  id                String    @id @default(uuid())
+  tenantId          String
+  name              String
+  description       String?   @db.Text
+  globalContext     String?   @db.Text
+  visualAuditPrompt String?   @db.Text
+  campaignObjective String?   @db.Text
+  steps             Json?     @default("[]")
+  subjectPrompt     String?   @db.Text
+  firstTouchPrompt  String?   @db.Text
+  followUpPrompt    String?   @db.Text
+  closerPrompt      String?   @db.Text
+  isDefault         Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("prompt_templates")
+}
+

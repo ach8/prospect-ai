@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Patch, UseGuards, Query } from '@nestjs/common';
 import { ProspectsService } from './prospects.service';
 import { CreateProspectDto, UpdateProspectDto } from './dto/prospect.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -11,8 +11,12 @@ export class ProspectsController {
   constructor(private readonly prospectsService: ProspectsService) {}
 
   @Get()
-  findAll(@CurrentTenant() tenantId: string) {
-    return this.prospectsService.findAll(tenantId);
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('folderId') folderId?: string,
+    @Query('listId') listId?: string,
+  ) {
+    return this.prospectsService.findAll(tenantId, folderId, listId);
   }
 
   @Get(':id')
@@ -34,8 +38,25 @@ export class ProspectsController {
     return this.prospectsService.update(id, dto, tenantId);
   }
 
+  @Patch(':id/call-status')
+  updateCallStatus(
+    @Param('id') id: string,
+    @Body() dto: { callStatus: any, callNotes?: string },
+    @CurrentTenant() tenantId: string,
+  ) {
+    return this.prospectsService.updateCallStatus(id, dto.callStatus, dto.callNotes, tenantId);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentTenant() tenantId: string) {
     return this.prospectsService.remove(id, tenantId);
+  }
+
+  @Delete()
+  removeMany(@Body('ids') ids: string[], @CurrentTenant() tenantId: string) {
+    if (!ids || ids.length === 0) {
+      return { success: false, message: 'Aucun ID fourni' };
+    }
+    return this.prospectsService.removeMany(ids, tenantId);
   }
 }

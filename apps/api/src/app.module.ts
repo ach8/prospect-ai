@@ -12,6 +12,10 @@ import { PrismaModule } from './common/prisma/prisma.module';
 import { RedisModule } from './common/redis/redis.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { Redis } from 'ioredis';
+import { FoldersModule } from './modules/folders/folders.module';
+import { ListsModule } from './modules/lists/lists.module';
+import { JobsModule } from './modules/jobs/jobs.module';
+import { PromptsModule } from './modules/prompts/prompts.module';
 
 @Module({
   imports: [
@@ -64,6 +68,10 @@ import { Redis } from 'ioredis';
     AgentsModule,
     EnrichmentModule,
     DashboardModule,
+    FoldersModule,
+    ListsModule,
+    JobsModule,
+    PromptsModule,
   ],
 })
 export class AppModule {}

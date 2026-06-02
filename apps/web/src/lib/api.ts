@@ -1,4 +1,4 @@
-const API_URL = '/api/v1';
+export const API_URL = '/api/v1';
 
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   const url = `${API_URL}${endpoint}`;
@@ -26,7 +26,8 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
     */
     
     const error = await response.json().catch(() => ({ message: 'Une erreur est survenue' }));
-    throw new Error(error.message || 'Une erreur est survenue');
+    const errorMsg = Array.isArray(error.message) ? error.message.join(', ') : (error.message || 'Une erreur est survenue');
+    throw new Error(errorMsg);
   }
   
   return response.json().catch(() => ({}));
@@ -35,4 +36,7 @@ async function fetchAPI(endpoint: string, options: RequestInit = {}) {
 export const api = {
   get: async (endpoint: string, options?: RequestInit) => fetchAPI(endpoint, { ...options, method: 'GET' }),
   post: async (endpoint: string, body?: any, options?: RequestInit) => fetchAPI(endpoint, { ...options, method: 'POST', body: JSON.stringify(body) }),
+  put: async (endpoint: string, body?: any, options?: RequestInit) => fetchAPI(endpoint, { ...options, method: 'PUT', body: JSON.stringify(body) }),
+  patch: async (endpoint: string, body?: any, options?: RequestInit) => fetchAPI(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(body) }),
+  delete: async (endpoint: string, options?: RequestInit) => fetchAPI(endpoint, { ...options, method: 'DELETE' }),
 };

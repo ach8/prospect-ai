@@ -12,6 +12,9 @@ import {
   Send,
   Database,
   Wrench,
+  Activity,
+  Library,
+  Sparkles,
 } from "lucide-react"
 
 import {
@@ -23,14 +26,20 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar"
+import { PhoneCall } from "lucide-react"
 
 const navMain = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Prospects", url: "/prospects", icon: Users },
+  { title: "Dialer", url: "/dialer", icon: PhoneCall },
+  { title: "Sourcing", url: "/sourcing", icon: Bot },
+  { title: "Agent Expert", url: "/expert", icon: Sparkles },
   { title: "Campagnes", url: "/campaigns", icon: Megaphone },
-  { title: "Enrichissement", url: "/enrichment", icon: Database },
+  { title: "Enrichissement d'emails", url: "/enrichment", icon: Database },
   { title: "Agents IA", url: "/agents", icon: Bot },
+  { title: "Prompts IA", url: "/prompts", icon: Library },
   { title: "Outils", url: "/tools", icon: Wrench },
+  { title: "Tâches en fond", url: "/jobs", icon: Activity },
   { title: "Analytics", url: "/analytics", icon: BarChart },
 ]
 

@@ -37,3 +37,8 @@ prisma/*.db-journal
 
 # Misc
 *.tsbuildinfo
+
+update.tar
+google-credentials.json
+apps/api/secrets/
+api_logs.txt

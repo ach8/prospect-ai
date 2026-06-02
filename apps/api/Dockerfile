@@ -1,5 +1,17 @@
 FROM node:20-alpine
 
+# Installs latest Chromium package for Puppeteer.
+RUN apk add --no-cache \
+      chromium \
+      nss \
+      freetype \
+      harfbuzz \
+      ca-certificates \
+      ttf-freefont
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 # Installer pnpm
 RUN npm install -g pnpm
 

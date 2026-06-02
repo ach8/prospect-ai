@@ -1,5 +1,5 @@
 // Minimal test to verify multi-step tool calling works
-const { generateText, tool, stepCountIs } = require('ai');
+const { generateText, tool, stepCountIs, zodSchema } = require('ai');
 const { google } = require('@ai-sdk/google');
 const { z } = require('zod');
 
@@ -14,7 +14,7 @@ async function main() {
   
   try {
     const result = await generateText({
-      model: google('gemini-2.5-flash'),
+      model: google('gemini-3.1-pro-preview'),
       system: 'Tu es un assistant. Utilise les outils disponibles pour répondre.',
       prompt: 'Donne-moi 3 noms de fruits. Pour chaque fruit, appelle l\'outil "addItem".',
       stopWhen: stepCountIs(10),
@@ -23,12 +23,17 @@ async function main() {
       },
       tools: {
         addItem: tool({
-          description: 'Ajoute un item à la liste',
-          parameters: z.object({
-            name: z.string().describe('Le nom de l\'item'),
-          }),
-          execute: async ({ name }: { name: string }) => {
-            console.log(`  [TOOL] addItem called with: "${name}"`);
+          description: 'Ajoute un item à la liste. Tu DOIS fournir le paramètre "name".',
+          parameters: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Le nom de l'item" }
+            },
+            required: ["name"]
+          } as any,
+          execute: async (args: any) => {
+            console.log(`  [TOOL] addItem called with:`, args);
+            const name = args.name;
             collectedItems.push(name);
             return `OK: "${name}" ajouté. Total: ${collectedItems.length}`;
           },
@@ -40,11 +45,14 @@ async function main() {
     console.log('FinishReason:', result.finishReason);
     console.log('Steps:', result.steps?.length);
     console.log('Text:', result.text?.substring(0, 200));
+    console.log('Error:', result.error);
     console.log('Items collectés:', collectedItems);
     
     if (result.steps) {
       result.steps.forEach((step: any, i: number) => {
         console.log(`  Step ${i+1}: reason=${step.finishReason}, tools=${step.toolCalls?.length || 0}`);
+        if (step.error) console.log(`  Step ${i+1} Error:`, step.error);
+        if (step.warnings) console.log(`  Step ${i+1} Warnings:`, step.warnings);
       });
     }
   } catch (err: any) {

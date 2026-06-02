@@ -1,0 +1,1 @@
+const { Queue } = require('bullmq'); const q = new Queue('research', { connection: { host: 'redis', port: 6379 } }); Promise.all([q.getWaitingCount(), q.getActiveCount(), q.getDelayedCount(), q.getFailedCount()]).then(counts => console.log('Wait, Active, Delayed, Failed:', counts)).finally(() => process.exit(0));

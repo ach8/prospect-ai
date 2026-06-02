@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function run() { const latest = await prisma.prospect.findMany({ orderBy: { createdAt: 'desc' }, take: 20 }); console.log(JSON.stringify(latest.map(p => ({id: p.id, company: p.companyName, source: p.source, date: p.createdAt})), null, 2)); } run().catch(console.error);

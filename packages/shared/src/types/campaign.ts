@@ -26,7 +26,7 @@ export const CampaignSchema = z.object({
   goal: z.string(),
   tone: z.string(),
   aiConfig: z.object({
-    model: z.string().default('gemini-2.5-pro'),
+    model: z.string().default('gemini-3.5-flash'),
     useSearchGrounding: z.boolean().default(true),
     temperature: z.number().min(0).max(1).default(0.7),
     language: z.string().default('fr'),
