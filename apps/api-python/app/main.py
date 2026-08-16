@@ -30,6 +30,36 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+from fastapi.exceptions import RequestValidationError
+from fastapi import HTTPException
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "statusCode": exc.status_code,
+            "message": exc.detail,
+            "detail": exc.detail,
+        },
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    error_msgs = [f"{err['loc'][-1]}: {err['msg']}" for err in exc.errors()]
+    msg = ", ".join(error_msgs)
+    return JSONResponse(
+        status_code=422,
+        content={
+            "statusCode": 422,
+            "message": msg,
+            "detail": exc.errors(),
+        },
+    )
+
+
 # CORS Middleware for Next.js Frontend
 app.add_middleware(
     CORSMiddleware,
