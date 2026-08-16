@@ -106,13 +106,18 @@ class CopywritingAgent:
             await session.commit()
 
         # Profil textuel pour l'IA
-        prospect_info = f"""Nom : {prospect.firstName} {prospect.lastName}
-Entreprise : {prospect.companyName}
-Secteur : {prospect.industry or 'Inconnu'}
-Job Title : {prospect.jobTitle or 'Dirigeant'}
-Données d'enrichissement : {enrichment_data}
-{f"Recherche approfondie: {enrichment_data.get('deepResearch')}" if enrichment_data.get('deepResearch') else ''}
-{f"Audit visuel (Variable Y): {enrichment_data.get('visualAudit')}" if enrichment_data.get('visualAudit') else ''}"""
+        deep_res_text = f"\nRecherche approfondie: {enrichment_data.get('deepResearch')}" if enrichment_data.get('deepResearch') else ""
+        visual_audit_text = f"\nAudit visuel (Variable Y): {enrichment_data.get('visualAudit')}" if enrichment_data.get('visualAudit') else ""
+
+        prospect_info = (
+            f"Nom : {prospect.firstName} {prospect.lastName}\n"
+            f"Entreprise : {prospect.companyName}\n"
+            f"Secteur : {prospect.industry or 'Inconnu'}\n"
+            f"Job Title : {prospect.jobTitle or 'Dirigeant'}\n"
+            f"Donnees d'enrichissement : {enrichment_data}"
+            f"{deep_res_text}"
+            f"{visual_audit_text}"
+        )
 
         previous_context = ""
 
@@ -120,46 +125,49 @@ Données d'enrichissement : {enrichment_data}
         for step in steps:
             subject = ""
             body = ""
+            prev_msg_block = f"\nEMAIL PRECEDENT :\n{previous_context}" if previous_context else ""
+            prev_msgs_block = f"\nEMAILS PRECEDENTS :\n{previous_context}" if previous_context else ""
+            objective_block = f"\nOBJECTIF STRICT : {campaign_objective}" if campaign_objective else ""
 
             if step.templateType.value == "AI_GENERATED":
                 if step.agentType.value == "SUBJECT":
                     angle = random.choice(self.SUBJECT_ANGLES)
-                    system_prompt = f"""Tu es un copywriter B2B d'élite.
-Ton but est d'écrire un OBJET d'email ultra-accrocheur et naturel (3 à 8 mots).
+                    system_prompt = f"""Tu es un copywriter B2B d'elite.
+Ton but est d'ecrire un OBJET d'email ultra-accrocheur et naturel (3 a 8 mots).
 CONTEXTE CAMPAGNE : {global_context}
 INFOS PROSPECT :
 {prospect_info}
-{f"EMAIL PRÉCÉDENT :\n{previous_context}" if previous_context else ''}
+{prev_msg_block}
 
-ANGLE IMPOSÉ : "{angle['name']}" ({angle['instruction']})
-RÈGLES ANTI-ROBOT :
-- Très court (3 à 8 mots).
-- Pas de tirets, pas de mots comme 'friction', 'problème', 'question', 'optimisation'.
-- Pas de préfixe 'Objet:' ou 'Sujet:'. Uniquement le texte brut."""
+ANGLE IMPOSE : "{angle['name']}" ({angle['instruction']})
+REGLES ANTI-ROBOT :
+- Tres court (3 a 8 mots).
+- Pas de tirets, pas de mots comme 'friction', 'probleme', 'question', 'optimisation'.
+- Pas de prefixe 'Objet:' ou 'Sujet:'. Uniquement le texte brut."""
 
-                    prompt = "Génère UNIQUEMENT le texte du sujet d'email."
+                    prompt = "Genere UNIQUEMENT le texte du sujet d'email."
                     raw_subj = await generate_text_with_failover(prompt, system_prompt=system_prompt, temperature=0.95)
                     clean_subj = re.sub(r"^(objet|sujet|subject)\s*:\s*", "", raw_subj, flags=re.IGNORECASE).strip().strip('"').rstrip(".")
                     subject = clean_subj
                     body = ""
                 else:
                     hook = random.choice(self.HOOK_VARIATIONS)
-                    system_prompt = f"""Tu es un expert en copywriting B2B. Ton but est d'écrire un email de prospection humanisé.
+                    system_prompt = f"""Tu es un expert en copywriting B2B. Ton but est d'ecrire un email de prospection humanise.
 CONTEXTE GLOBAL : {global_context}
-{f"OBJECTIF STRICT : {campaign_objective}" if campaign_objective else ''}
+{objective_block}
 INFOS PROSPECT :
 {prospect_info}
-INSTRUCTION ÉTAPE : {step.aiPrompt or 'Email de prise de contact percutant'}
-{f"EMAILS PRÉCÉDENTS :\n{previous_context}" if previous_context else ''}
+INSTRUCTION ETAPE : {step.aiPrompt or 'Email de prise de contact percutant'}
+{prev_msgs_block}
 
 CONTRAINTES ANTI-IA :
 - Style d'accroche : {hook}
-- 100% sur-mesure pour ce prospect précis.
-- INTERDICTION d'utiliser 'En visitant votre site', 'J'ai remarqué que', 'Je me permets'.
-- INTERDICTION de listes à puces ou de tirets.
-- Écris directement le corps du message (pas de sujet)."""
+- 100% sur-mesure pour ce prospect precis.
+- INTERDICTION d'utiliser 'En visitant votre site', 'J'ai remarque que', 'Je me permets'.
+- INTERDICTION de listes a puces ou de tirets.
+- Ecris directement le corps du message (pas de sujet)."""
 
-                    prompt = "Rédige le corps de l'email."
+                    prompt = "Redige le corps de l'email."
                     body = await generate_text_with_failover(prompt, system_prompt=system_prompt, temperature=0.85)
                     subject = step.subject or ""
             else:
