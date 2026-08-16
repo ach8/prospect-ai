@@ -14,19 +14,20 @@ services:
     environment:
       - API_INTERNAL_URL=http://api:4000
 
-  # 2. Le Backend (NestJS + IA)
+  # 2. Le Backend (FastAPI + Python AI Agents)
   api:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: apps/api-python/Dockerfile
     ports:
       - "4000:4000"
     restart: unless-stopped
     env_file:
-      - ./apps/api/.env
+      - .env.remote
     environment:
+      - PORT=4000
+      - HOST=0.0.0.0
       - REDIS_URL=redis://redis:6379
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/apps/api/google-credentials.json
     depends_on:
       - redis
 
