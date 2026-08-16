@@ -39,11 +39,26 @@ class Settings(BaseSettings):
     def assemble_db_connection(cls, v: Optional[str]) -> str:
         if not v:
             return "postgresql+asyncpg://postgres:postgres@localhost:5432/postgres"
-        # Convert standard prisma postgresql:// to asyncpg postgresql+asyncpg://
+        
+        # Convert standard postgresql:// to asyncpg postgresql+asyncpg://
         if v.startswith("postgresql://") and not v.startswith("postgresql+asyncpg://"):
-            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
         if v.startswith("postgres://"):
-            return v.replace("postgres://", "postgresql+asyncpg://", 1)
+            v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+
+        # Nettoyage des paramètres spécifiques à Prisma (ex: pgbouncer=true)
+        from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+        try:
+            parsed = urlparse(v)
+            if parsed.query:
+                query_params = parse_qs(parsed.query)
+                unsupported = ["pgbouncer", "connection_limit", "pool_timeout", "schema"]
+                cleaned_params = {k: val for k, val in query_params.items() if k.lower() not in unsupported}
+                new_query = urlencode(cleaned_params, doseq=True)
+                v = urlunparse(parsed._replace(query=new_query))
+        except Exception:
+            pass
+
         return v
 
     # Redis
