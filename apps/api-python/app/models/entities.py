@@ -369,7 +369,7 @@ class Mailbox(Base):
     smtpPassEncrypted = Column(String, nullable=False)
     dailyLimit = Column(Integer, default=50, nullable=False)
     warmupLevel = Column(Integer, default=0, nullable=False)
-    isActive = Column(Boolean, default=true_value := True, nullable=False)
+    isActive = Column(Boolean, default=True, nullable=False)
     healthScore = Column(Float, default=100.0, nullable=False)
     createdAt = Column(DateTime, default=datetime.utcnow, nullable=False)
     updatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
