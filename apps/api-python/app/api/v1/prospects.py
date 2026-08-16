@@ -13,8 +13,9 @@ router = APIRouter(prefix="/prospects", tags=["Prospects"])
 @router.get("", response_model=List[ProspectResponse])
 async def get_prospects(
     list_id: Optional[str] = Query(None, alias="listId"),
+    folder_id: Optional[str] = Query(None, alias="folderId"),
     search: Optional[str] = None,
-    limit: int = Query(100, le=1000),
+    limit: int = Query(2500, le=5000),
     offset: int = 0,
     tenant_id: str = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db),
@@ -25,6 +26,11 @@ async def get_prospects(
         query = query.join(ProspectListEntry, Prospect.id == ProspectListEntry.prospectId).where(
             ProspectListEntry.prospectListId == list_id
         )
+    elif folder_id:
+        from app.models.entities import ProspectList
+        query = query.join(ProspectListEntry, Prospect.id == ProspectListEntry.prospectId)\
+                     .join(ProspectList, ProspectListEntry.prospectListId == ProspectList.id)\
+                     .where(ProspectList.folderId == folder_id)
 
     if search:
         query = query.where(
@@ -38,7 +44,23 @@ async def get_prospects(
     query = query.order_by(Prospect.createdAt.desc()).limit(limit).offset(offset)
     res = await db.execute(query)
     prospects = res.scalars().all()
-    return [ProspectResponse.model_validate(p) for p in prospects]
+    
+    # Check campaign prospects for hasGeneratedEmails
+    from app.models.entities import CampaignProspect
+    prospect_ids = [p.id for p in prospects]
+    generated_prospect_ids = set()
+    if prospect_ids:
+        cp_stmt = select(CampaignProspect.prospectId).where(CampaignProspect.prospectId.in_(prospect_ids))
+        cp_res = await db.execute(cp_stmt)
+        generated_prospect_ids = set(cp_res.scalars().all())
+
+    results = []
+    for p in prospects:
+        resp = ProspectResponse.model_validate(p)
+        resp.hasGeneratedEmails = p.id in generated_prospect_ids
+        results.append(resp)
+
+    return results
 
 
 @router.post("", response_model=ProspectResponse)

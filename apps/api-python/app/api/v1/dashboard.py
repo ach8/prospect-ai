@@ -36,6 +36,11 @@ async def get_dashboard_stats(
     credits_remaining = tenant.aiCreditsRemaining if tenant else 0
 
     return {
+        "totalProspects": p_total,
+        "emailsSent": 0,
+        "openRate": 0,
+        "leadsGenerated": 0,
+        "recentActivity": [],
         "success": True,
         "stats": {
             "totalProspects": p_total,

@@ -50,6 +50,7 @@ class ProspectResponse(ProspectBase):
     tenantId: str
     createdAt: datetime
     updatedAt: datetime
+    hasGeneratedEmails: Optional[bool] = False
 
     class Config:
         from_attributes = True
