@@ -38,7 +38,21 @@ prisma/*.db-journal
 # Misc
 *.tsbuildinfo
 
-update.tar
+update*.tar
+*.tar
 google-credentials.json
 apps/api/secrets/
 api_logs.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist-py/
