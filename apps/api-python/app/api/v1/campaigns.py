@@ -25,6 +25,9 @@ from app.agents.copywriting_agent import copywriting_agent
 router = APIRouter(prefix="/campaigns", tags=["Campaigns"])
 
 
+from sqlalchemy.orm import selectinload
+
+
 @router.get("", response_model=List[CampaignResponse])
 async def get_campaigns(
     tenant_id: str = Depends(get_current_tenant_id),
@@ -32,6 +35,7 @@ async def get_campaigns(
 ):
     stmt = (
         select(Campaign)
+        .options(selectinload(Campaign.steps))
         .where(Campaign.tenantId == tenant_id)
         .order_by(Campaign.createdAt.desc())
     )
@@ -40,17 +44,23 @@ async def get_campaigns(
 
     output = []
     for c in campaigns:
-        # Steps
-        s_res = await db.execute(select(SequenceStep).where(SequenceStep.campaignId == c.id).order_by(SequenceStep.stepOrder))
-        steps = s_res.scalars().all()
-
         # Prospect count
         p_res = await db.execute(select(func.count(CampaignProspect.id)).where(CampaignProspect.campaignId == c.id))
         p_count = p_res.scalar_one()
 
-        resp = CampaignResponse.model_validate(c)
-        resp.steps = [SequenceStepResponse.model_validate(s) for s in steps]
-        resp.prospectsCount = p_count
+        resp = CampaignResponse(
+            id=c.id,
+            tenantId=c.tenantId,
+            userId=c.userId,
+            name=c.name,
+            status=c.status,
+            folderId=c.folderId,
+            aiConfig=c.aiConfig or {},
+            createdAt=c.createdAt,
+            updatedAt=c.updatedAt,
+            steps=[SequenceStepResponse.model_validate(s) for s in (c.steps or [])],
+            prospectsCount=p_count,
+        )
         output.append(resp)
 
     return output
@@ -123,22 +133,32 @@ async def get_campaign(
     tenant_id: str = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Campaign).where(Campaign.id == campaign_id, Campaign.tenantId == tenant_id)
+    stmt = (
+        select(Campaign)
+        .options(selectinload(Campaign.steps))
+        .where(Campaign.id == campaign_id, Campaign.tenantId == tenant_id)
+    )
     res = await db.execute(stmt)
     c = res.scalars().first()
     if not c:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campagne introuvable.")
 
-    s_res = await db.execute(select(SequenceStep).where(SequenceStep.campaignId == c.id).order_by(SequenceStep.stepOrder))
-    steps = s_res.scalars().all()
-
     p_res = await db.execute(select(func.count(CampaignProspect.id)).where(CampaignProspect.campaignId == c.id))
     p_count = p_res.scalar_one()
 
-    resp = CampaignResponse.model_validate(c)
-    resp.steps = [SequenceStepResponse.model_validate(s) for s in steps]
-    resp.prospectsCount = p_count
-    return resp
+    return CampaignResponse(
+        id=c.id,
+        tenantId=c.tenantId,
+        userId=c.userId,
+        name=c.name,
+        status=c.status,
+        folderId=c.folderId,
+        aiConfig=c.aiConfig or {},
+        createdAt=c.createdAt,
+        updatedAt=c.updatedAt,
+        steps=[SequenceStepResponse.model_validate(s) for s in (c.steps or [])],
+        prospectsCount=p_count,
+    )
 
 
 @router.post("/{campaign_id}/generate")
