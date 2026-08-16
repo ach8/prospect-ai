@@ -7,6 +7,7 @@ export interface LocalBusiness {
   website?: string;
   phone?: string;
   rating?: number;
+  userRatingsTotal?: number;
   placeId: string;
   googleMapsUrl?: string;
 }
@@ -72,11 +73,16 @@ export class GooglePlacesService {
       for (const place of places) {
         if (!place.place_id) continue;
 
+        if (place.user_ratings_total !== undefined && place.user_ratings_total < 5) {
+          this.logger.debug(`Ignoré: ${place.name} a seulement ${place.user_ratings_total} avis (minimum 5 requis).`);
+          continue;
+        }
+
         try {
           const detailsResponse = await this.client.placeDetails({
             params: {
               place_id: place.place_id,
-              fields: ['name', 'formatted_address', 'website', 'formatted_phone_number', 'rating'],
+              fields: ['name', 'formatted_address', 'website', 'formatted_phone_number', 'rating', 'user_ratings_total'],
               key: this.apiKey,
               language: Language.fr,
             },
@@ -89,6 +95,7 @@ export class GooglePlacesService {
             website: details.website,
             phone: details.formatted_phone_number,
             rating: details.rating,
+            userRatingsTotal: details.user_ratings_total || place.user_ratings_total,
             placeId: place.place_id,
             googleMapsUrl: `https://www.google.com/maps/place/?q=place_id:${place.place_id}`,
           });

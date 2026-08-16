@@ -417,7 +417,7 @@ export class EmailDiscoveryService {
     if (foundEmail && hasNo2Bounce) {
       this.logger.log(`🔍 [Niveau 1] Validation No2Bounce de l'email trouvé par Gemini : ${foundEmail}`);
       const result = await this.no2bounceVerify(foundEmail);
-      if (result && result.isValid) {
+      if (result && result.isValid && !result.isCatchAll) {
         result.source = 'gemini_search';
         result.confidence = 95;
         this.logger.log(`✅ [Niveau 1] Succès ! Email trouvé et validé : ${foundEmail}`);
@@ -443,7 +443,7 @@ export class EmailDiscoveryService {
         if (patternEmail) {
           this.logger.log(`🔍 [Niveau 2] Pattern trouvé : "${pattern}" → Test de ${patternEmail}`);
           const result = await this.no2bounceVerify(patternEmail);
-          if (result && result.isValid) {
+          if (result && result.isValid && !result.isCatchAll) {
             result.source = 'gemini_search';
             result.confidence = 90;
             this.logger.log(`✅ [Niveau 2] Succès via Pattern ! Email : ${patternEmail}`);
@@ -469,9 +469,9 @@ export class EmailDiscoveryService {
         top3.map(email => this.no2bounceVerify(email))
       );
 
-      // Chercher le premier résultat valide
+      // Chercher le premier résultat valide non catch-all
       for (const r of results) {
-        if (r.status === 'fulfilled' && r.value && r.value.isValid) {
+        if (r.status === 'fulfilled' && r.value && r.value.isValid && !r.value.isCatchAll) {
           r.value.source = 'gemini_search';
           r.value.confidence = 75;
           this.logger.log(`✅ [Niveau 3] Succès via permutation ! Email : ${r.value.email}`);
