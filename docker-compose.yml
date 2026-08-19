@@ -23,7 +23,7 @@ services:
       - "4000:4000"
     restart: unless-stopped
     env_file:
-      - .env.remote
+      - .env
     environment:
       - PORT=4000
       - HOST=0.0.0.0
