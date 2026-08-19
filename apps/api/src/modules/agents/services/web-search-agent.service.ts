@@ -13,7 +13,7 @@ export class WebSearchAgentService {
    * Cette méthode est hautement résistante aux blocages anti-bots.
    */
   private async searchTavily(query: string): Promise<string> {
-    const apiKey = process.env.TAVILY_API_KEY || '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';
+    const apiKey = process.env.TAVILY_API_KEY || '';
     this.logger.log(`🔍 [Tavily Search] Requête : "${query}"`);
 
     try {
@@ -81,7 +81,7 @@ export class WebSearchAgentService {
     prompt: string,
     responseFormatJson = false
   ): Promise<string> {
-    const apiKey = process.env.GROQ_API_KEY || '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';
+    const apiKey = process.env.GROQ_API_KEY || '';
     
     // Ordre de bascule approuvé (basé sur les capacités et limites utilisateur)
     const models = [

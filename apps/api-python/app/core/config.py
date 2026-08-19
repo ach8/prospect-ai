@@ -65,11 +65,11 @@ class Settings(BaseSettings):
     REDIS_URL: str = Field(default="redis://localhost:6379")
 
     # AI API Keys
-    GROQ_API_KEY: str = Field(default="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")
-    TAVILY_API_KEY: str = Field(default="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")
-    GOOGLE_PLACES_API_KEY: str = Field(default="AIzaSyDIyP-IlVQDOU65RlfsbcEmZzZs12NYEEQ")
+    GROQ_API_KEY: Optional[str] = None
+    TAVILY_API_KEY: Optional[str] = None
+    GOOGLE_PLACES_API_KEY: Optional[str] = None
     GOOGLE_GENERATIVE_AI_API_KEY: Optional[str] = None
-    GOOGLE_VERTEX_PROJECT: Optional[str] = "project-317446da-f5f1-4ade-a6c"
+    GOOGLE_VERTEX_PROJECT: Optional[str] = None
     GOOGLE_VERTEX_LOCATION: Optional[str] = "global"
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
 

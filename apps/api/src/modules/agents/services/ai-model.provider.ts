@@ -3,7 +3,7 @@ import { generateText, generateObject, GenerateTextResult, GenerateObjectResult 
 
 // Client Groq officiel
 export const groq = createGroq({
-  apiKey: process.env.GROQ_API_KEY || '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',
+  apiKey: process.env.GROQ_API_KEY || '',
 });
 
 // Chaîne de secours pour les requêtes textuelles
